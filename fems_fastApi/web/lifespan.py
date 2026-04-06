@@ -20,7 +20,15 @@ def _setup_db(app: FastAPI) -> None:  # pragma: no cover
 
     :param app: fastAPI application.
     """
-    engine = create_async_engine(str(settings.db_url), echo=settings.db_echo)
+    engine = create_async_engine(
+        str(settings.db_url),
+        echo=settings.db_echo,
+        pool_size=10,
+        max_overflow=20,
+        pool_timeout=30,
+        pool_recycle=1800,   # 30분마다 연결 재생성 (MSSQL idle timeout 방지)
+        pool_pre_ping=True,  # 쿼리 전 연결 유효성 확인
+    )
     session_factory = async_sessionmaker(
         engine,
         expire_on_commit=False,
@@ -59,6 +67,6 @@ async def lifespan_setup(
     app.middleware_stack = app.build_middleware_stack()
 
     yield
-    await app.state.db_engine.dispose()
+    await app.state.db_engine.dispose(close=True)
 
     # await shutdown_redis(app)

@@ -15,6 +15,12 @@ class TokenResponse(BaseModel):
     user_nm: str | None = None
     admin_yn: str | None = None
 
+class LogoutRequest(BaseModel):
+    """Logout request schema."""
+
+    user_id: str
+
+
 class RegisterRequest(BaseModel):
     """Register request schema."""
 

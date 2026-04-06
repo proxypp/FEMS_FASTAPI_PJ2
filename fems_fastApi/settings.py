@@ -1,6 +1,7 @@
 import enum
 from pathlib import Path
 from tempfile import gettempdir
+from urllib.parse import quote_plus
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from yarl import URL
@@ -39,12 +40,12 @@ class Settings(BaseSettings):
 
     log_level: LogLevel = LogLevel.INFO
     # Variables for the database
-    db_host: str = "****"
-    db_port: int = 3308
+    db_host: str = "localhost"
+    db_port: int = 6331
     db_user: str = "swit"
-    db_pass: str = "****"  # noqa: S105
-    db_base: str = "fems_test"
-    db_echo: bool = True
+    db_pass: str = "*********"  # noqa: S105
+    db_base: str = "DAEBONG_FEMS"
+    db_echo: bool = False
 
     # JWT settings
     jwt_secret: str = "your-secret-key-change-this"
@@ -63,20 +64,22 @@ class Settings(BaseSettings):
     redis_base: int | None = None
 
     @property
-    def db_url(self) -> URL:
+    def db_url(self) -> str:
         """
         Assemble database URL from settings.
 
-        :return: database URL.
+        :return: database URL string.
         """
-        return URL.build(
-            scheme="mysql+aiomysql",
-            host=self.db_host,
-            port=self.db_port,
-            user=self.db_user,
-            password=self.db_pass,
-            path=f"/{self.db_base}",
+        odbc_connect = (
+            f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+            f"SERVER={self.db_host},{self.db_port};"
+            f"DATABASE={self.db_base};"
+            f"UID={self.db_user};"
+            f"PWD={self.db_pass};"
+            "TrustServerCertificate=yes;"
+            "Encrypt=no;"
         )
+        return "mssql+aioodbc:///?odbc_connect=" + quote_plus(odbc_connect)
 
     @property
     def redis_url(self) -> URL:
