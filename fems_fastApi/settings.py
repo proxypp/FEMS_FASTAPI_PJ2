@@ -40,10 +40,10 @@ class Settings(BaseSettings):
 
     log_level: LogLevel = LogLevel.INFO
     # Variables for the database
-    db_host: str = "localhost"
+    db_host: str = "112.216.70.42,6331"
     db_port: int = 6331
     db_user: str = "swit"
-    db_pass: str = "*********"  # noqa: S105
+    db_pass: str = "!@#$swit5678"  # noqa: S105
     db_base: str = "DAEBONG_FEMS"
     db_echo: bool = False
 

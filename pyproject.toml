@@ -28,6 +28,7 @@ dependencies = [
   "loguru",
   "python-jose[cryptography]>=3.5.0",
   "bcrypt>=5.0.0",
+  "python-multipart>=0.0.27",
 ]
 
 [dependency-groups]

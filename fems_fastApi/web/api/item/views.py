@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import and_, func, or_, select, update
+from sqlalchemy import and_, func, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fems_fastApi.db.dependencies import get_db_session
 from fems_fastApi.db.models.item import Item
-from fems_fastApi.web.api.item.schema import ItemCreateRequest, ItemResponse, ItemUpdateRequest
+from fems_fastApi.web.api.item.schema import ItemCreateRequest, ItemResponse, ItemSourceResponse, ItemUpdateRequest
 
 router = APIRouter()
 
@@ -87,3 +87,25 @@ async def update_item(
     await session.commit()
 
     return {"message": "수정되었습니다.", "item_code": item_code}
+
+
+# ── 제품별 원단위 조회 (USP_ITEM_SOURCE_SEARCH) ──────────────────────────────
+
+@router.get("/source", response_model=list[ItemSourceResponse])
+async def get_item_source(
+    item_code: str = Query(default="", description="품목 코드 (부분 검색)"),
+    item_name: str = Query(default="", description="품목명 (부분 검색)"),
+    session: AsyncSession = Depends(get_db_session),
+) -> list[ItemSourceResponse]:
+    """제품별 원단위 조회 (USP_ITEM_SOURCE_SEARCH - GRID_GBN='M', DML_GBN='S')."""
+    sql = text(
+        "SET NOCOUNT ON; "
+        "EXEC USP_ITEM_SOURCE_SEARCH "
+        "@GRID_GBN = 'M', "
+        "@DML_GBN = 'S', "
+        "@ITEM_CODE = :item_code, "
+        "@ITEM_NAME = :item_name"
+    )
+    result = await session.execute(sql, {"item_code": item_code, "item_name": item_name})
+    rows = result.mappings().all()
+    return [ItemSourceResponse(**{k.lower(): v for k, v in row.items()}) for row in rows]

@@ -1,3 +1,5 @@
+import base64
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import and_, func, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,6 +8,12 @@ from fems_fastApi.db.dependencies import get_db_session
 from fems_fastApi.db.models.equip import Equip
 from fems_fastApi.web.api.equip.schema import (
     EquipCreateRequest,
+    EquipDailyCheckDeleteRequest,
+    EquipDailyCheckResponse,
+    EquipDailyCheckSaveRequest,
+    EquipDailyCodeDeleteRequest,
+    EquipDailyCodeResponse,
+    EquipDailyCodeSaveRequest,
     EquipMeterCreateRequest,
     EquipMeterResponse,
     EquipMeterUpdateRequest,
@@ -119,7 +127,10 @@ async def get_equip_meter_master(
         "@EQUIP_CODE = :equip_code, "
         "@EQUIP_NAME = :equip_name"
     )
-    result = await session.execute(sql, {"equip_code": equip_code, "equip_name": equip_name})
+    result = await session.execute(sql, {
+        "equip_code": equip_code,
+        "equip_name": equip_name,
+    })
     rows = result.mappings().all()
     return [EquipMeterResponse(**{k.lower(): v for k, v in row.items()}) for row in rows]
 
@@ -217,3 +228,264 @@ async def delete_equip_meter(
     await session.execute(sql, {"equip_code": equip_code, "meter_id": meter_id})
     await session.commit()
     return {"message": "설비별 계측기가 삭제되었습니다."}
+
+
+# ── 설비점검코드 관리 (USP_EQUIP_DAILY_CODE_EDIT) ──────────────────────────
+
+@router.get("/daily-code", response_model=list[EquipDailyCodeResponse])
+async def get_equip_daily_code(
+    equip_code: str = Query(default="", description="설비 코드 (부분 검색)"),
+    equip_name: str = Query(default="", description="설비명 (부분 검색)"),
+    session: AsyncSession = Depends(get_db_session),
+) -> list[EquipDailyCodeResponse]:
+    """설비점검코드 조회 (USP_EQUIP_DAILY_CODE_EDIT - DML_GBN='S')."""
+    sql = text(
+        "SET NOCOUNT ON; "
+        "EXEC USP_EQUIP_DAILY_CODE_EDIT "
+        "@GRID_GBN = 'M', "
+        "@DML_GBN = 'S', "
+        "@EQUIP_CODE = :equip_code, "
+        "@EQUIP_NAME = :equip_name, "
+        "@IMAGE_BIN = NULL"
+    )
+    result = await session.execute(sql, {"equip_code": equip_code, "equip_name": equip_name})
+    rows = result.mappings().all()
+    return [EquipDailyCodeResponse(**{k.lower(): v for k, v in row.items()}) for row in rows]
+
+
+@router.post("/daily-code", status_code=201)
+async def save_equip_daily_code(
+    body: EquipDailyCodeSaveRequest,
+    session: AsyncSession = Depends(get_db_session),
+) -> dict:
+    """설비점검코드 등록/수정 (USP_EQUIP_DAILY_CODE_EDIT - DML_GBN='A')."""
+    image_bytes = base64.b64decode(body.image_bin) if body.image_bin else None
+
+    sql = text(
+        "SET NOCOUNT ON; "
+        "EXEC USP_EQUIP_DAILY_CODE_EDIT "
+        "@GRID_GBN = 'M', "
+        "@DML_GBN = 'A', "
+        "@MILL_CD = :mill_cd, "
+        "@ROUT_CODE = :rout_code, "
+        "@EQUIP_CODE = :equip_code, "
+        "@EQUIP_CHECK = :equip_check, "
+        "@MAGM_VAL = :magm_val, "
+        "@MAGM_MAX = :magm_max, "
+        "@MAGM_MIN = :magm_min, "
+        "@STD_MAX = :std_max, "
+        "@STD_MIN = :std_min, "
+        "@RMAX_VAL = :rmax_val, "
+        "@UNIT = :unit, "
+        "@REMARK = :remark, "
+        "@IMAGE_BIN = :image_bin, "
+        "@CRE_USER = :cre_user, "
+        "@UPD_USER = :upd_user"
+    )
+    await session.execute(
+        sql,
+        {
+            "mill_cd": body.mill_cd,
+            "rout_code": body.rout_code,
+            "equip_code": body.equip_code,
+            "equip_check": body.equip_check,
+            "magm_val": body.magm_val,
+            "magm_max": body.magm_max,
+            "magm_min": body.magm_min,
+            "std_max": body.std_max,
+            "std_min": body.std_min,
+            "rmax_val": body.rmax_val,
+            "unit": body.unit,
+            "remark": body.remark,
+            "image_bin": image_bytes,
+            "cre_user": body.cre_user,
+            "upd_user": body.upd_user,
+        },
+    )
+    await session.commit()
+    return {"message": "설비점검코드가 저장되었습니다."}
+
+
+@router.delete("/daily-code")
+async def delete_equip_daily_code(
+    body: EquipDailyCodeDeleteRequest,
+    session: AsyncSession = Depends(get_db_session),
+) -> dict:
+    """설비점검코드 삭제 (USP_EQUIP_DAILY_CODE_EDIT - DML_GBN='D')."""
+    sql = text(
+        "SET NOCOUNT ON; "
+        "EXEC USP_EQUIP_DAILY_CODE_EDIT "
+        "@GRID_GBN = 'M', "
+        "@DML_GBN = 'D', "
+        "@MILL_CD = :mill_cd, "
+        "@ROUT_CODE = :rout_code, "
+        "@EQUIP_CODE = :equip_code, "
+        "@EQUIP_CHECK = :equip_check"
+    )
+    await session.execute(
+        sql,
+        {
+            "mill_cd": body.mill_cd,
+            "rout_code": body.rout_code,
+            "equip_code": body.equip_code,
+            "equip_check": body.equip_check,
+        },
+    )
+    await session.commit()
+    return {"message": "설비점검코드가 삭제되었습니다."}
+
+
+# ── 설비점검실적 관리 (USP_EQUIP_DAILY_CHECK_EDIT) ──────────────────────────
+
+@router.get("/daily-check", response_model=list[EquipDailyCheckResponse])
+async def get_equip_daily_check(
+    equip_code: str = Query(default="", description="설비 코드 (부분 검색)"),
+    equip_name: str = Query(default="", description="설비명 (부분 검색)"),
+    check_yyyymm: str = Query(default="", description="점검년월 (YYYYMM)"),
+    session: AsyncSession = Depends(get_db_session),
+) -> list[EquipDailyCheckResponse]:
+    """설비점검실적 조회 (USP_EQUIP_DAILY_CHECK_EDIT - DML_GBN='S')."""
+    sql = text(
+        "SET NOCOUNT ON; "
+        "EXEC USP_EQUIP_DAILY_CHECK_EDIT "
+        "@GRID_GBN = 'M', "
+        "@DML_GBN = 'S', "
+        "@EQUIP_CODE = :equip_code, "
+        "@EQUIP_NAME = :equip_name, "
+        "@CHECK_YYYYMM = :check_yyyymm"
+    )
+    result = await session.execute(sql, {
+        "equip_code": equip_code,
+        "equip_name": equip_name,
+        "check_yyyymm": check_yyyymm,
+    })
+    rows = result.mappings().all()
+    return [EquipDailyCheckResponse(**{k.lower(): v for k, v in row.items()}) for row in rows]
+
+
+@router.post("/daily-check", status_code=201)
+async def save_equip_daily_check(
+    body: EquipDailyCheckSaveRequest,
+    session: AsyncSession = Depends(get_db_session),
+) -> dict:
+    """설비점검실적 등록/수정 (USP_EQUIP_DAILY_CHECK_EDIT - DML_GBN='A')."""
+    sql = text(
+        "SET NOCOUNT ON; "
+        "EXEC USP_EQUIP_DAILY_CHECK_EDIT "
+        "@GRID_GBN = 'M', "
+        "@DML_GBN = 'A', "
+        "@MILL_CD = :mill_cd, "
+        "@ROUT_CODE = :rout_code, "
+        "@EQUIP_CODE = :equip_code, "
+        "@EQUIP_CHECK = :equip_check, "
+        "@CHECK_YYYYMM = :check_yyyymm, "
+        "@VALUE_1 = :value_1, "
+        "@VALUE_2 = :value_2, "
+        "@VALUE_3 = :value_3, "
+        "@VALUE_4 = :value_4, "
+        "@VALUE_5 = :value_5, "
+        "@VALUE_6 = :value_6, "
+        "@VALUE_7 = :value_7, "
+        "@VALUE_8 = :value_8, "
+        "@VALUE_9 = :value_9, "
+        "@VALUE_10 = :value_10, "
+        "@VALUE_11 = :value_11, "
+        "@VALUE_12 = :value_12, "
+        "@VALUE_13 = :value_13, "
+        "@VALUE_14 = :value_14, "
+        "@VALUE_15 = :value_15, "
+        "@VALUE_16 = :value_16, "
+        "@VALUE_17 = :value_17, "
+        "@VALUE_18 = :value_18, "
+        "@VALUE_19 = :value_19, "
+        "@VALUE_20 = :value_20, "
+        "@VALUE_21 = :value_21, "
+        "@VALUE_22 = :value_22, "
+        "@VALUE_23 = :value_23, "
+        "@VALUE_24 = :value_24, "
+        "@VALUE_25 = :value_25, "
+        "@VALUE_26 = :value_26, "
+        "@VALUE_27 = :value_27, "
+        "@VALUE_28 = :value_28, "
+        "@VALUE_29 = :value_29, "
+        "@VALUE_30 = :value_30, "
+        "@VALUE_31 = :value_31, "
+        "@CRE_USER = :cre_user, "
+        "@UPD_USER = :upd_user"
+    )
+    await session.execute(
+        sql,
+        {
+            "mill_cd": body.mill_cd,
+            "rout_code": body.rout_code,
+            "equip_code": body.equip_code,
+            "equip_check": body.equip_check,
+            "check_yyyymm": body.check_yyyymm,
+            "value_1": body.value_1,
+            "value_2": body.value_2,
+            "value_3": body.value_3,
+            "value_4": body.value_4,
+            "value_5": body.value_5,
+            "value_6": body.value_6,
+            "value_7": body.value_7,
+            "value_8": body.value_8,
+            "value_9": body.value_9,
+            "value_10": body.value_10,
+            "value_11": body.value_11,
+            "value_12": body.value_12,
+            "value_13": body.value_13,
+            "value_14": body.value_14,
+            "value_15": body.value_15,
+            "value_16": body.value_16,
+            "value_17": body.value_17,
+            "value_18": body.value_18,
+            "value_19": body.value_19,
+            "value_20": body.value_20,
+            "value_21": body.value_21,
+            "value_22": body.value_22,
+            "value_23": body.value_23,
+            "value_24": body.value_24,
+            "value_25": body.value_25,
+            "value_26": body.value_26,
+            "value_27": body.value_27,
+            "value_28": body.value_28,
+            "value_29": body.value_29,
+            "value_30": body.value_30,
+            "value_31": body.value_31,
+            "cre_user": body.cre_user,
+            "upd_user": body.upd_user,
+        },
+    )
+    await session.commit()
+    return {"message": "설비점검실적이 저장되었습니다."}
+
+
+@router.delete("/daily-check")
+async def delete_equip_daily_check(
+    body: EquipDailyCheckDeleteRequest,
+    session: AsyncSession = Depends(get_db_session),
+) -> dict:
+    """설비점검실적 삭제 (USP_EQUIP_DAILY_CHECK_EDIT - DML_GBN='D')."""
+    sql = text(
+        "SET NOCOUNT ON; "
+        "EXEC USP_EQUIP_DAILY_CHECK_EDIT "
+        "@GRID_GBN = 'M', "
+        "@DML_GBN = 'D', "
+        "@MILL_CD = :mill_cd, "
+        "@ROUT_CODE = :rout_code, "
+        "@EQUIP_CODE = :equip_code, "
+        "@EQUIP_CHECK = :equip_check, "
+        "@CHECK_YYYYMM = :check_yyyymm"
+    )
+    await session.execute(
+        sql,
+        {
+            "mill_cd": body.mill_cd,
+            "rout_code": body.rout_code,
+            "equip_code": body.equip_code,
+            "equip_check": body.equip_check,
+            "check_yyyymm": body.check_yyyymm,
+        },
+    )
+    await session.commit()
+    return {"message": "설비점검실적이 삭제되었습니다."}

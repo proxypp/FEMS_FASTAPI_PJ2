@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from fems_fastApi.db.dependencies import get_db_session
 from fems_fastApi.web.api.energy_source.schema import (
+    EnergySourceAmountResponse,
     EnergySourceCreateRequest,
     EnergySourceResponse,
     EnergySourceUpdateRequest,
@@ -109,3 +110,57 @@ async def update_energy_source(
     )
     await session.commit()
     return {"message": "에너지원이 수정되었습니다."}
+
+
+# ── 매출 에너지원단위 조회 (USP_ENERGY_SOURCE_AMOUNT_SEARCH) ─────────────────
+
+@router.get("/amount", response_model=list[EnergySourceResponse])
+async def get_energy_source_amount(
+    source_id: str = Query(default="", description="에너지원 ID (부분 검색)"),
+    source_name: str = Query(default="", description="에너지원 명 (부분 검색)"),
+    use_yn: str = Query(default="", description="사용여부 (Y/N, 빈값: 전체)"),
+    session: AsyncSession = Depends(get_db_session),
+) -> list[EnergySourceResponse]:
+    """매출 에너지원단위 마스터 조회 (USP_ENERGY_SOURCE_AMOUNT_SEARCH - GRID_GBN='M', DML_GBN='S')."""
+    sql = text(
+        "SET NOCOUNT ON; "
+        "EXEC USP_ENERGY_SOURCE_AMOUNT_SEARCH "
+        "@GRID_GBN = 'M', "
+        "@DML_GBN = 'S', "
+        "@SOURCE_ID = :source_id, "
+        "@SOURCE_NAME = :source_name, "
+        "@USE_YN = :use_yn"
+    )
+    result = await session.execute(sql, {
+        "source_id": source_id,
+        "source_name": source_name,
+        "use_yn": use_yn,
+    })
+    rows = result.mappings().all()
+    return [EnergySourceResponse(**{k.lower(): v for k, v in row.items()}) for row in rows]
+
+
+@router.get("/amount/sub", response_model=list[EnergySourceAmountResponse])
+async def get_energy_source_amount_sub(
+    source_id: str = Query(default="", description="에너지원 ID"),
+    start_dt: str = Query(default="", description="조회 시작일 (YYYY-MM-DD)"),
+    end_dt: str = Query(default="", description="조회 종료일 (YYYY-MM-DD)"),
+    session: AsyncSession = Depends(get_db_session),
+) -> list[EnergySourceAmountResponse]:
+    """매출 에너지원단위 상세 조회 (USP_ENERGY_SOURCE_AMOUNT_SEARCH - GRID_GBN='S', DML_GBN='S')."""
+    sql = text(
+        "SET NOCOUNT ON; "
+        "EXEC USP_ENERGY_SOURCE_AMOUNT_SEARCH "
+        "@GRID_GBN = 'S', "
+        "@DML_GBN = 'S', "
+        "@SOURCE_ID = :source_id, "
+        "@START_DT = :start_dt, "
+        "@END_DT = :end_dt"
+    )
+    result = await session.execute(sql, {
+        "source_id": source_id,
+        "start_dt": start_dt,
+        "end_dt": end_dt,
+    })
+    rows = result.mappings().all()
+    return [EnergySourceAmountResponse(**{k.lower(): v for k, v in row.items()}) for row in rows]

@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(.venv\\\\Scripts\\\\pip install *)",
+      "PowerShell(D:\\\\FastAPI\\\\Fems_FastAPI\\\\.venv\\\\Scripts\\\\pip install python-multipart)"
+    ]
+  }
+}

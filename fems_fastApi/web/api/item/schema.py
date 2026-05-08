@@ -52,3 +52,20 @@ class ItemResponse(BaseModel):
     upd_dt: datetime | None = None
 
     model_config = {"from_attributes": True}
+
+
+# ── 제품별 원단위 조회 (USP_ITEM_SOURCE_SEARCH) ──────────────────────────────
+
+class ItemSourceResponse(BaseModel):
+    mill_cd: str | None = None
+    plant_code: str | None = None
+    equip_code: str | None = None
+    equip_name: str | None = None
+    item_code: str | None = None
+    item_name: str | None = None
+    source_id: str | None = None
+    source_name: str | None = None
+    unit: str | None = None
+    unit_used: float | None = None
+
+    model_config = {"from_attributes": True}

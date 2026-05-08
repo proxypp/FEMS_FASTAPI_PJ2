@@ -118,7 +118,7 @@ async def save_user_menu_permissions(
     user_id: str,
     body: list[UserMenuPermissionSaveRequest],
     cre_user: str = Query(default="system", description="등록자 ID"),
-    mill_cd: str = Query(default="1", description="밀 코드"),
+    mill_cd: str = Query(default="1", description="MILL_CD"),
     session: AsyncSession = Depends(get_db_session),
 ) -> dict:
     """사용자 메뉴 권한 저장.
