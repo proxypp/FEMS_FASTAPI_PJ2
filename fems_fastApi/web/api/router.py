@@ -1,5 +1,5 @@
 from fastapi.routing import APIRouter
-from fems_fastApi.web.api import auth, base_code, base_file, conf_menu, emission_factor, emission_factor_usage, energy_amount_trend, energy_source, equip, equip_compare, equip_insp_compare, equip_interface, equip_plan_mmdd, equip_plan_yymm, equip_result_search, item, meter, meter_energy_search, month_prod_emission, period_energy_usage, prev_year_month_compare, prod_order, prod_result, real_time_usage, tariff, user, utility_amount, utility_manual, utility_source_usage, utility_usage_month
+from fems_fastApi.web.api import auth, base_code, base_file, conf_menu, emission_factor, emission_factor_usage, energy_amount_trend, energy_source, energy_usage_pred, equip, equip_compare, equip_insp_compare, equip_interface, equip_plan_mmdd, equip_plan_yymm, equip_result_search, item, meter, meter_energy_search, month_prod_emission, period_energy_usage, prev_year_month_compare, prod_order, prod_result, real_time_usage, tariff, user, utility_amount, utility_manual, utility_source_usage, utility_usage_month
 
 api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["Auth"])
@@ -95,4 +95,9 @@ api_router.include_router(
     equip_interface.router,
     prefix="/equip-interface",
     tags=["Equip Interface"],
+)
+api_router.include_router(
+    energy_usage_pred.router,
+    prefix="/energy-usage-pred",
+    tags=["Energy Usage Pred"],
 )
