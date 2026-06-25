@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import and_, delete, func, insert, select, update
+from sqlalchemy import and_, func, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fems_fastApi.db.dependencies import get_db_session
@@ -121,33 +121,52 @@ async def save_user_menu_permissions(
     mill_cd: str = Query(default="1", description="MILL_CD"),
     session: AsyncSession = Depends(get_db_session),
 ) -> dict:
-    """사용자 메뉴 권한 저장.
+    """사용자 메뉴 권한 저장 (menu_id 단위 upsert).
 
-    기존 권한을 삭제 후 전달받은 목록으로 재등록합니다.
+    전달받은 메뉴만 있으면 UPDATE, 없으면 INSERT 합니다.
+    전체 삭제를 하지 않으므로 일부 메뉴만 전송해도 나머지 권한은 보존됩니다.
     """
-    # 기존 권한 삭제
-    await session.execute(
-        delete(ConfUserMenu).where(ConfUserMenu.user_id == user_id),
-    )
+    if not body:
+        return {"message": "변경할 권한이 없습니다.", "user_id": user_id, "count": 0}
 
-    # 신규 권한 일괄 INSERT
-    if body:
-        await session.execute(
-            insert(ConfUserMenu),
-            [
-                {
-                    "mill_cd": mill_cd,
-                    "user_id": user_id,
-                    "parent_id": item.parent_id,
-                    "menu_id": item.menu_id,
-                    "use_yn": item.use_yn,
-                    "cre_user": cre_user,
-                    "upd_user": None,
-                    "upd_dt": None,
-                }
-                for item in body
-            ],
-        )
+    # 해당 사용자의 기존 권한(menu_id 집합) 조회
+    existing_result = await session.execute(
+        select(ConfUserMenu.menu_id).where(ConfUserMenu.user_id == user_id),
+    )
+    existing_menu_ids = set(existing_result.scalars().all())
+
+    for item in body:
+        if item.menu_id in existing_menu_ids:
+            # 기존 권한: USE_YN 갱신
+            await session.execute(
+                update(ConfUserMenu)
+                .where(
+                    and_(
+                        ConfUserMenu.user_id == user_id,
+                        ConfUserMenu.menu_id == item.menu_id,
+                    ),
+                )
+                .values(
+                    use_yn=item.use_yn,
+                    parent_id=item.parent_id,
+                    upd_user=cre_user,
+                    upd_dt=func.now(),
+                ),
+            )
+        else:
+            # 신규 권한: INSERT
+            await session.execute(
+                insert(ConfUserMenu).values(
+                    mill_cd=mill_cd,
+                    user_id=user_id,
+                    parent_id=item.parent_id,
+                    menu_id=item.menu_id,
+                    use_yn=item.use_yn,
+                    cre_user=cre_user,
+                    upd_user=None,
+                    upd_dt=None,
+                ),
+            )
 
     await session.commit()
 

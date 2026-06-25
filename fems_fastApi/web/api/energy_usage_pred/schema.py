@@ -19,6 +19,6 @@ class EnergyUsagePredResponse(BaseModel):
     unit: str | None = Field(None, alias="UNIT")
     erroramt: float | None = Field(None, alias="ERRORAMT")
     errorrate: float | None = Field(None, alias="ERRORRATE")
-    accuracy: int | None = Field(None, alias="ACCURACY")
+    accuracy: float | None = Field(None, alias="ACCURACY")
 
     model_config = {"from_attributes": True, "populate_by_name": True}

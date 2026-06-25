@@ -12,6 +12,7 @@ router = APIRouter()
 async def get_prod_orders(
     start_dt: str = Query(description="조회 시작일 (YYYY-MM-DD)"),
     end_dt: str = Query(description="조회 종료일 (YYYY-MM-DD)"),
+    rout_code: str = Query(default="", description="공정 코드 (부분 검색)"),
     session: AsyncSession = Depends(get_db_session),
 ) -> list[ProdOrderResponse]:
     """생산작업 지시 목록 조회."""
@@ -21,9 +22,18 @@ async def get_prod_orders(
         "@GRID_GBN = 'M', "
         "@DML_GBN = 'S', "
         "@START_DT = :start_dt, "
-        "@END_DT = :end_dt"
+        "@END_DT = :end_dt, "
+        "@ROUT_CODE = :rout_code"
     )
-    result = await session.execute(sql, {"start_dt": start_dt, "end_dt": end_dt})
+    # @START_DT, @END_DT는 YYYYMMDD(예: 20260617) 형태로 전달한다.
+    result = await session.execute(
+        sql,
+        {
+            "start_dt": start_dt.replace("-", ""),
+            "end_dt": end_dt.replace("-", ""),
+            "rout_code": rout_code,
+        },
+    )
     rows = result.mappings().all()
     return [ProdOrderResponse(**{k.lower(): v for k, v in row.items()}) for row in rows]
 

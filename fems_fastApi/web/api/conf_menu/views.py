@@ -58,7 +58,7 @@ async def create_main_menu(
             " (MENU_ID, MENU_NAME, MENU_TYPE, PARENT_ID, USE_YN, DISSORT, CRE_DT, CRE_USER)"
             " VALUES"
             " (:menu_id, :menu_name, '0', '0', 'Y',"
-            "  (SELECT ISNULL(MAX(DISSORT), 0) FROM TB_CONF_MENU),"
+            "  ISNULL((SELECT ISNULL(MAX(DISSORT), 0) + 1 FROM TB_CONF_MENU), 1),"
             "  GETDATE(), :cre_user)"
         ),
         {"menu_id": body.menu_id, "menu_name": body.menu_name, "cre_user": body.cre_user},
@@ -79,7 +79,7 @@ async def create_sub_menu(
             " (MENU_ID, MENU_NAME, MENU_TYPE, PARENT_ID, USE_YN, DISSORT, CRE_DT, CRE_USER)"
             " VALUES"
             " (:menu_id, :menu_name, '1', :parent_id, 'Y',"
-            "  (SELECT ISNULL(MAX(DISSORT), 0) FROM TB_CONF_MENU),"
+            "  ISNULL((SELECT ISNULL(MAX(DISSORT), 0) + 1 FROM TB_CONF_MENU), 1),"
             "  GETDATE(), :cre_user)"
         ),
         {
